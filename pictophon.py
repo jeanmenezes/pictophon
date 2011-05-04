@@ -12,7 +12,7 @@ import csv
 import audiotools
 import glob
 
-# carrega mensagens
+# carrega mensagens {{{1
 
 with open('./.messages/.welcome', 'r') as w:
     boas_vindas = w.read()
@@ -35,7 +35,7 @@ with open('./.messages/.cria_html', 'r') as ch:
 with open('./.messages/.cleanup', 'r') as cl:
     mess_cleanup = cl.read()
 
-# checagem de rotina para argumentos
+# checagem de rotina para argumentos {{{1
 
 if len(sys.argv) != 2:
     print '''
@@ -62,7 +62,7 @@ elif sys.argv[1] == 'help':
     print ajuda
     sys.exit()
 
-# checar se o arquivo declarado é realmente uma imagem;
+# checar se o arquivo declarado é realmente uma imagem; {{{1
 # em caso afirmativo, carrega o arquivo.
 
 try:
@@ -78,7 +78,7 @@ else:
     pic = sys.argv[1]
     print boas_vindas
 
-# declaração das variáveis principais
+# declaração das variáveis principais {{{1
 
 partes = pic.rsplit('.', 1)
 base = partes[0]
@@ -89,9 +89,10 @@ csvXYZ = './' + base + '.XYZ.csv'
 csvxyz = './' + base + '.xyz.csv'
 
 
-# declaração das funções
+# declaração das funções {{{1
 
 
+# gera_xyz {{{2
 def gera_xyz(imagem):
     '''
     * reduz a imagem a 25% da dimensão em pixels e converte para GIF 64 cores;
@@ -139,6 +140,7 @@ def gera_xyz(imagem):
     os.remove('./tmp.txt')
 
 
+# calcula_xyz() {{{2
 def calcula_xyz(csvfile):
     '''
     converte valores XYZ para xyz e gera um arquivo CSV para cálculos posteriores
@@ -163,6 +165,7 @@ def calcula_xyz(csvfile):
             csvfx.writerow(line)
 
 
+# mean() {{{2
 def mean(col, csvfile):
     '''
     calcula a média dos valores XYZ (primeira etapa)
@@ -178,6 +181,7 @@ def mean(col, csvfile):
         return vals_mean
 
 
+# media() {{{2
 def media(r, csvfile):
     '''
     segunda etapa para mean()
@@ -195,6 +199,7 @@ def media(r, csvfile):
     return med_tot
 
 
+# cria_chuck() {{{3
 def cria_chuck():
     '''
     cria arquivo .ck para geração de sons via ChucK
@@ -236,6 +241,7 @@ def cria_chuck():
             ck.write('pix.todisk("{0}");\n'.format(h))
 
 
+# cria_aif() {{{2
 def cria_aif(ckfile):
     '''
     cria arquivos .aif usando chuck
@@ -249,6 +255,7 @@ def cria_aif(ckfile):
     os.mkdir(destino + "/.mp3")
 
 
+# conv_mp3() {{{2
 def conv_mp3():
     '''
     * cria arquivos .mp3 comprimidos para a página html de referência;
@@ -265,6 +272,7 @@ def conv_mp3():
         shutil.move(regex_wav.sub('mp3', i), destino + '/.mp3/')
 
 
+# cria_ref_html() {{{2
 def cria_ref_html():
     with open('color_ref.html', 'w') as html:
         html.write('''
@@ -310,6 +318,7 @@ def cria_ref_html():
     shutil.move('./color_ref.html', destino)
 
 
+# cleanup() {{{2
 def cleanup():
     '''
     limpa arquivos temporários
@@ -325,7 +334,7 @@ def cleanup():
     shutil.move(csvxyz, destino)
 
 
-# chamando as funções para execução do programa
+# chamando as funções para execução do programa {{{1
 
 gera_xyz(pic)
 calcula_xyz(csvXYZ)
