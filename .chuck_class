@@ -1,0 +1,65 @@
+class Pixel
+{
+	float mean_freq;
+	dur durr;
+	int x_freq;
+	int y_freq;
+	int z_freq;
+	float x_amp;
+	float y_amp;
+	float z_amp;
+
+	fun void set_vars(float mf, dur d, int xf, int yf, int zf, float xa, float ya, float za)
+	{
+		mf => mean_freq;
+		d => durr;
+		xf => x_freq;
+		yf => y_freq;
+		zf => z_freq;
+		xa => x_amp;
+		ya => y_amp;
+		za => z_amp;
+	}
+
+	fun void todisk(string fname)
+	{
+		SinOsc x => Gain xg => ADSR ea => dac;
+		SinOsc y => Gain yg => ADSR eb =>dac;
+		SinOsc z => Gain zg => ADSR ec => dac;
+		dac => WvOut wo => blackhole;
+		fname => wo.aifFilename;
+
+		x_amp => xg.gain;
+		mean_freq + (x_freq * 2) => x.freq;
+		y_amp => yg.gain;
+		mean_freq + (y_freq * 2) => y.freq;
+		z_amp => zg.gain;
+		mean_freq + (z_freq * 2) => z.freq;
+
+		ea.set(23::ms, durr, 1, 23::ms);
+		eb.set(23::ms, durr, 1, 23::ms);
+		ec.set(23::ms, durr, 1, 23::ms);
+
+		ea.keyOn();
+		eb.keyOn();
+		ec.keyOn();
+		durr => now;
+		ea.keyOff();
+		eb.keyOff();
+		ec.keyOff();
+		23::ms => now;
+
+		x =< dac;
+		xg =< dac;
+		ea =< dac;
+		y =< dac;
+		yg =< dac;
+		eb =< dac;
+		z =< dac;
+		zg =< dac;
+		ec =< dac;
+		dac =< wo;
+		wo =< blackhole;
+	}
+}
+
