@@ -19,9 +19,9 @@ if len(sys.argv) != 2:
     print '''
     Bad usage: only one argument must be used,
     and it should be an image file name.
-    
+
     Usage: ./pictophon.py <image_file>
-    
+
     typing  ./pictophon.py
     or      ./pictophon.py help
     displays this help.
