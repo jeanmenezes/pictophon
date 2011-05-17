@@ -185,7 +185,7 @@ def cria_chuck():
     mt = media(3, csvXYZ)
 
     with open(chuckfile, 'w') as ck:
-        with open('./.chuck_class', 'r') as cc:
+        with open('./chuck_template', 'r') as cc:
             for line in cc:
                 ck.write(line)
         ck.write('Pixel pix;\n')
@@ -230,7 +230,7 @@ def cria_aif(ckfile):
     command = shlex.split("chuck --srate44100 --silent {0}".format(ckfile))
     subprocess.call(command)
     os.mkdir(destino)
-    os.mkdir(destino + "/.mp3")
+    os.mkdir(destino + "/mp3")
 
 
 # conv_mp3() {{{2
@@ -247,7 +247,7 @@ def conv_mp3():
     for i in wf:
         audiotools.MP3Audio.from_pcm(regex_wav.sub('mp3', i), audiotools.open(i).to_pcm())
         shutil.move(i, destino)
-        shutil.move(regex_wav.sub('mp3', i), destino + '/.mp3/')
+        shutil.move(regex_wav.sub('mp3', i), destino + '/mp3/')
 
 
 # cria_ref_html() {{{2
@@ -283,7 +283,7 @@ def cria_ref_html():
             html.write('<td bgcolor={0}>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>\n'.format(rgb))
             html.write('<td>{0}.wav</td>\n'.format(nrgb))
             html.write('<td>{0} occurrences</td>\n'.format(j))
-            html.write('<td><audio src="./.mp3/{0}.mp3" controls="controls" type="audio/mp3"></td>\n'.format(nrgb))
+            html.write('<td><audio src="./mp3/{0}.mp3" controls="controls" type="audio/mp3"></td>\n'.format(nrgb))
             html.write('</tr>\n\n')
 
         html.write('''
