@@ -11,29 +11,7 @@ import shutil
 import csv
 import audiotools
 import glob
-
-# carrega mensagens {{{1
-
-with open('./.messages/.welcome', 'r') as w:
-    boas_vindas = w.read()
-
-with open('./.messages/.ajuda', 'r') as h:
-    ajuda = h.read()
-
-with open('./.messages/.gera_xyz', 'r') as xyz:
-    mess_gera_xyz = xyz.read()
-
-with open('./.messages/.cria_chuck', 'r') as cc:
-    mess_cria_chuck = cc.read()
-
-with open('./.messages/.cria_aif', 'r') as ca:
-    mess_cria_aif = ca.read()
-
-with open('./.messages/.cria_html', 'r') as ch:
-    mess_cria_html = ch.read()
-
-with open('./.messages/.cleanup', 'r') as cl:
-    mess_cleanup = cl.read()
+import messages
 
 # checagem de rotina para argumentos {{{1
 
@@ -50,7 +28,7 @@ if len(sys.argv) != 2:
     '''
     sys.exit()
 elif sys.argv[1] == 'help':
-    print boas_vindas
+    print messages.welcome
     print '''
     Usage: ./pictophon.py <image_file>
 
@@ -59,7 +37,7 @@ elif sys.argv[1] == 'help':
     displays this help.
 
     '''
-    print ajuda
+    print messages.helptext
     sys.exit()
 
 # checar se o arquivo declarado é realmente uma imagem; {{{1
@@ -76,7 +54,7 @@ except:
     sys.exit()
 else:
     pic = sys.argv[1]
-    print boas_vindas
+    print messages.welcome
 
 # declaração das variáveis principais {{{1
 
@@ -99,7 +77,7 @@ def gera_xyz(imagem):
     * gera um arquivo CSV com os dados de cores de canais XYZ para a imagem.
     '''
 
-    print mess_gera_xyz
+    print messages.crexyz
 
     comando = []
     comando.append('convert ./{0} -resize 25% ./tmp.{1}'.format(imagem, extensao))
@@ -112,7 +90,7 @@ def gera_xyz(imagem):
     for i in comandos:
         subprocess.call(i)
 
-    # aqui criamos o CSV propriamente dito, mais os auxiliares internos .rgblist e .occ_list
+    # aqui criamos o CSV propriamente dito, mais os auxiliares internos rgblist.tmp e occ_list.tmp {{{3
 
     with open('tmp.txt') as f:
         l = [line.split() for line in f]
@@ -128,11 +106,11 @@ def gera_xyz(imagem):
         for j in ult:
             fx.write(regex_xyz.sub('', j) + '\n')
 
-    with open('.rgblist', 'w') as rl:
+    with open('rgblist.tmp', 'w') as rl:
         for j in pen:
             rl.write(regex_hash.sub('', j) + '\n')
 
-    with open('.occ_list', 'w') as ol:
+    with open('occ_list.tmp', 'w') as ol:
         occ = [pen_col.count(j) for j in pen]
         for k in sorted(occ, reverse=True):
             ol.write(str(k) + '\n')
@@ -187,7 +165,7 @@ def media(r, csvfile):
     segunda etapa para mean()
     '''
 
-    print mess_cria_chuck
+    print messages.crechuck
 
     vals_tot = []
     for i in range(r):
@@ -230,10 +208,10 @@ def cria_chuck():
 
         regex_nl = re.compile("\n")
 
-        with open('./.occ_list', 'r') as ol:
+        with open('./occ_list.tmp', 'r') as ol:
             durs = [regex_nl.sub('', line) + '::ms' for line in ol]
 
-        with open('./.rgblist', 'r') as rl:
+        with open('./rgblist.tmp', 'r') as rl:
             fnames = [regex_nl.sub('', line) + '.aiff' for line in rl]
 
         for a, b, c, d, e, f, g, h in map(None, fx, fy, fz, ax, ay, az, durs, fnames):
@@ -247,7 +225,7 @@ def cria_aif(ckfile):
     cria arquivos .aif usando chuck
     '''
 
-    print mess_cria_aif
+    print messages.creaiff
 
     command = shlex.split("chuck --srate44100 --silent {0}".format(ckfile))
     subprocess.call(command)
@@ -262,7 +240,7 @@ def conv_mp3():
     * move os arquivos .aif e .wav para a pasta de destino
     '''
 
-    print mess_cria_html
+    print messages.crehtml
 
     wf = glob.glob('./*.aiff')
     regex_wav = re.compile('aiff')
@@ -292,9 +270,9 @@ def cria_ref_html():
         regex_wav = re.compile('.aiff')
         regex_nl = re.compile('\n')
 
-        with open('./.occ_list', 'r') as ol:
+        with open('./occ_list.tmp', 'r') as ol:
             occs = [regex_nl.sub('', line) for line in ol]
-        with open('./.rgblist', 'r') as rl:
+        with open('./rgblist.tmp', 'r') as rl:
             rgbs = [regex_nl.sub('', line) for line in rl]
 
         for i in aiffs:
@@ -324,11 +302,11 @@ def cleanup():
     limpa arquivos temporários
     '''
 
-    print mess_cleanup
+    print messages.cleanup
 
     os.remove(base + ".small.gif")
-    os.remove('./.rgblist')
-    os.remove('./.occ_list')
+    os.remove('./rgblist.tmp')
+    os.remove('./occ_list.tmp')
     shutil.move(chuckfile, destino)
     shutil.move(csvXYZ, destino)
     shutil.move(csvxyz, destino)
@@ -344,4 +322,4 @@ conv_mp3()
 cria_ref_html()
 cleanup()
 
-print 'Okay! You can find your .aiff and various reference files at {0}.\n'.format(destino)
+print '\nOkay! You can find your .aiff and various reference files at {0}.\n'.format(destino)

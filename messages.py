@@ -1,3 +1,4 @@
+helptext  = '''
 Running this command will generate a subfolder containing 64 .aiff files, 
 each one of them relating to one of the main colors found in the image you 
 supplied as argument. In addition, there will be one .ck file to be used 
@@ -15,3 +16,35 @@ proportional energies for each wavelength group.
 
 This software is free and opensource, and is alive thanks to Linux, Python, 
 ImageMagick and ChucK.
+'''
+
+cleanup = '''
+Cleaning up temporary files and moving things to their right places...
+'''
+
+creaiff = '''
+Creating .aiff files. It can take a while...
+'''
+
+crechuck = '''
+Creating a .ck file for good ol' ChucK...
+'''
+
+crehtml = '''
+Generating html reference for color data and corresponding sound files...
+'''
+
+crexyz = '''
+Generating XYZ and xyz color data for image...
+'''
+
+welcome = '''
+Welcome to Pictophon 1.0 beta!
+
+- * - * -
+
+Software created by Jean Menezes da Rocha (jean.rudess AT gmail DOT com)
+This version was released May 4th, 2011
+
+- * - * -
+'''
