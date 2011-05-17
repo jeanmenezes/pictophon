@@ -13,6 +13,10 @@ import audiotools
 import glob
 import messages
 
+REGEX_XYZ = re.compile('[xyz\(\)]')
+REGEX_HASH = re.compile('\#')
+
+
 # checagem de rotina para argumentos {{{1
 
 if len(sys.argv) != 2:
@@ -70,6 +74,17 @@ csvxyz = './' + base + '.xyz.csv'
 # declaração das funções {{{1
 
 
+def parse_csv(txtfile):
+    with open(txtfile) as f:
+        l = [line.split() for line in f]
+        pen_col = [x[-2] for x in l[1:]]
+        ult_col = [x[-1] for x in l[1:]]
+        rgb = list(set(ult_col))
+        return {'rgb': rgb,
+                'XYZ': list(set(pen_col)),
+                'ocorrencias': [pen_col.count(j) for j in rgb]}
+
+
 # gera_xyz {{{2
 def gera_xyz(imagem):
     '''
@@ -92,27 +107,18 @@ def gera_xyz(imagem):
 
     # aqui criamos o CSV propriamente dito, mais os auxiliares internos rgblist.tmp e occ_list.tmp {{{3
 
-    with open('tmp.txt') as f:
-        l = [line.split() for line in f]
-        pen_col = [x[-2] for x in l[1:]]
-        ult_col = [x[-1] for x in l[1:]]
-        pen = list(set(pen_col))
-        ult = list(set(ult_col))
-
-        regex_xyz = re.compile('[xyz\(\)]')
-        regex_hash = re.compile('\#')
+    dic = parse_csv('tmp.txt')
 
     with open(csvXYZ, 'w') as fx:
-        for j in ult:
-            fx.write(regex_xyz.sub('', j) + '\n')
+        for j in dic['rgb']:
+            fx.write(REGEX_XYZ.sub('', j) + '\n')
 
     with open('rgblist.tmp', 'w') as rl:
-        for j in pen:
-            rl.write(regex_hash.sub('', j) + '\n')
+        for j in dic['XYZ']:
+            rl.write(REGEX_HASH.sub('', j) + '\n')
 
     with open('occ_list.tmp', 'w') as ol:
-        occ = [pen_col.count(j) for j in pen]
-        for k in sorted(occ, reverse=True):
+        for k in sorted(dic['ocorrencias'], reverse=True):
             ol.write(str(k) + '\n')
 
     os.remove('./tmp.txt')
@@ -229,8 +235,11 @@ def cria_aif(ckfile):
 
     command = shlex.split("chuck --srate44100 --silent {0}".format(ckfile))
     subprocess.call(command)
-    os.mkdir(destino)
-    os.mkdir(destino + "/mp3")
+    try: 
+        os.mkdir(destino)
+        os.mkdir(destino + "/mp3")
+    except OSError:
+        pass
 
 
 # conv_mp3() {{{2
