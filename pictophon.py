@@ -110,10 +110,10 @@ def gera_xyz(imagem):
     print messages.strings['crexyz']
 
     comando = [
-        'convert ./{0} -resize 25% ./tmp.{1}'.format(imagem, EXTENSAO),
-        'convert ./tmp.{0} -dither FloydSteinberg -colors 64 ./{1}.small.gif'.format(EXTENSAO, BASE),
-        'rm ./tmp.{0}'.format(EXTENSAO),
-        'convert ./{0}.small.gif -colorspace XYZ ./tmp.txt'.format(BASE)
+        'convert \'{0}\' -resize 25% \'./tmp.{1}\''.format(imagem, EXTENSAO),
+        'convert \'./tmp.{0}\' -dither FloydSteinberg -colors 64 \'./{1}.small.gif\''.format(EXTENSAO, BASE),
+        'rm \'./tmp.{0}\''.format(EXTENSAO),
+        'convert \'./{0}.small.gif\' -colorspace XYZ \'./tmp.txt\''.format(BASE)
     ]
 
     comandos = [shlex.split(x) for x in comando]
