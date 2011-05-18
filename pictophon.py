@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding=iso-8859-15
 
+# importação de módulos {{{1
+
 import sys
 import subprocess
 import shlex
@@ -12,10 +14,6 @@ import csv
 import audiotools
 import glob
 import messages
-
-REGEX_XYZ = re.compile('[xyz\(\)]')
-REGEX_HASH = re.compile('\#')
-
 
 # checagem de rotina para argumentos {{{1
 
@@ -32,7 +30,7 @@ if len(sys.argv) != 2:
     '''
     sys.exit()
 elif sys.argv[1] == 'help':
-    print messages.welcome
+    print messages.strings['welcome']
     print '''
     Usage: ./pictophon.py <image_file>
 
@@ -41,94 +39,149 @@ elif sys.argv[1] == 'help':
     displays this help.
 
     '''
-    print messages.helptext
+    print messages.strings['helptext']
     sys.exit()
+
 
 # checar se o arquivo declarado é realmente uma imagem; {{{1
 # em caso afirmativo, carrega o arquivo.
 
-try:
-    Image.open(sys.argv[1])
-except IOError as detail:
-    print sys.argv[1], "is not a valid image file!"
-    sys.exit()
-except:
-    print "unexpected error:", sys.exc_info()[0]
-    raise
-    sys.exit()
-else:
-    pic = sys.argv[1]
-    print messages.welcome
+def check_img():
+    '''
+    Checar se o arquivo declarado é realmente uma imagem;
+    em caso afirmativo, carrega o arquivo
+    '''
+
+    try:
+        Image.open(sys.argv[1])
+    except IOError:
+        print sys.argv[1], "is not a valid image file!"
+        sys.exit()
+    except:
+        print "unexpected error:", sys.exc_info()[0]
+        raise
+        sys.exit()
+    else:
+        return sys.argv[1]
+
 
 # declaração das variáveis principais {{{1
 
-partes = pic.rsplit('.', 1)
-base = partes[0]
-extensao = partes[1]
-destino = './' + base + '_pictophon'
-chuckfile = './' + base + '.ck'
-csvXYZ = './' + base + '.XYZ.csv'
-csvxyz = './' + base + '.xyz.csv'
+PIC = check_img()
+PARTES = PIC.rsplit('.', 1)
+BASE = PARTES[0]
+EXTENSAO = PARTES[1]
+DESTINO = './' + BASE + '_pictophon'
+CHUCKFILE = './' + BASE + '.ck'
+csvXYZ = './' + BASE + '.XYZ.csv'
+csvxyz = './' + BASE + '.xyz.csv'
+REGEX_XYZ = re.compile('[xyz\(\)]')
+REGEX_HASH = re.compile('\#')
 
 
 # declaração das funções {{{1
 
+# safe_cleanup {{{2
 
-def parse_csv(txtfile):
-    with open(txtfile) as f:
-        l = [line.split() for line in f]
-        pen_col = [x[-2] for x in l[1:]]
-        ult_col = [x[-1] for x in l[1:]]
-        rgb = list(set(ult_col))
-        return {'rgb': rgb,
-                'XYZ': list(set(pen_col)),
-                'ocorrencias': [pen_col.count(j) for j in rgb]}
+def safe_cleanup():
+    '''
+    Limpa arquivos temporários em caso de erro
+    '''
+
+    os.remove(BASE + ".small.gif")
+    os.remove('./tmp.txt')
+    os.remove(CHUCKFILE)
+    os.remove(csvXYZ)
+    os.remove(csvxyz)
+    for file in glob.glob('./*.aiff'):
+        os.remove(file)
 
 
 # gera_xyz {{{2
+
 def gera_xyz(imagem):
     '''
     * reduz a imagem a 25% da dimensão em pixels e converte para GIF 64 cores;
-    * gera um arquivo CSV com os dados de cores de canais XYZ para a imagem.
+    * gera um arquivo .txt com os dados pixel a pixel, quanto às cores em RGB
+      e xyz
     '''
 
-    print messages.crexyz
+    print messages.strings['welcome']
+    print messages.strings['crexyz']
 
-    comando = []
-    comando.append('convert ./{0} -resize 25% ./tmp.{1}'.format(imagem, extensao))
-    comando.append('convert ./tmp.{0} -dither FloydSteinberg -colors 64 ./{1}.small.gif'.format(extensao, base))
-    comando.append('rm ./tmp.{0}'.format(extensao))
-    comando.append('convert ./{0}.small.gif -colorspace XYZ ./tmp.txt'.format(base))
+    comando = [
+        'convert ./{0} -resize 25% ./tmp.{1}'.format(imagem, EXTENSAO),
+        'convert ./tmp.{0} -dither FloydSteinberg -colors 64 ./{1}.small.gif'.format(EXTENSAO, BASE),
+        'rm ./tmp.{0}'.format(EXTENSAO),
+        'convert ./{0}.small.gif -colorspace XYZ ./tmp.txt'.format(BASE)
+    ]
 
     comandos = [shlex.split(x) for x in comando]
 
     for i in comandos:
         subprocess.call(i)
 
-    # aqui criamos o CSV propriamente dito, mais os auxiliares internos rgblist.tmp e occ_list.tmp {{{3
+    with open('./tmp.txt', 'r') as tt:
+        return tt.readlines()
 
-    dic = parse_csv('tmp.txt')
+
+# parse_csv {{{2
+
+def parse_csv(txtfile):
+    '''
+    Gera listas brutas de RGB, XYZ e número de ocorrência de cada cor.
+    '''
+
+    l = [line.split() for line in txtfile]
+    pen_col = [x[-2] for x in l[1:]]
+    ult_col = [x[-1] for x in l[1:]]
+    rgb = list(set(ult_col))
+    return {'XYZ': rgb,
+            'rgb': list(set(pen_col)),
+            'ocorrencias': [pen_col.count(j) for j in list(set(pen_col))]}
+
+
+# cria dicionário para uso persistente {{{2
+
+DIC = parse_csv(gera_xyz(PIC))
+
+
+# rgblist, occ_list {{{2
+
+def rgblist(coluna):
+    '''
+    Estrutura a lista de dados RGB
+    '''
+
+    return [REGEX_HASH.sub('', j) + '\n' for j in coluna]
+
+def occ_list(coluna):
+    '''
+    Estrutura a lista de ocorrências de cada cor
+    '''
+
+    return [str(k) + '\n' for k in sorted(coluna, reverse=True)]
+
+
+# gera_csv {{{2
+
+def gera_csv():
+    '''
+    Estrutura o arquivo .csv com os dados XYZ da imagem
+    '''
 
     with open(csvXYZ, 'w') as fx:
-        for j in dic['rgb']:
+        for j in DIC['XYZ']:
             fx.write(REGEX_XYZ.sub('', j) + '\n')
-
-    with open('rgblist.tmp', 'w') as rl:
-        for j in dic['XYZ']:
-            rl.write(REGEX_HASH.sub('', j) + '\n')
-
-    with open('occ_list.tmp', 'w') as ol:
-        for k in sorted(dic['ocorrencias'], reverse=True):
-            ol.write(str(k) + '\n')
-
-    os.remove('./tmp.txt')
 
 
 # calcula_xyz() {{{2
+
 def calcula_xyz(csvfile):
     '''
     converte valores XYZ para xyz e gera um arquivo CSV para cálculos posteriores
     '''
+
     csv.register_dialect('xyzcsv', delimiter=',', quoting=csv.QUOTE_NONE)
     with open(csvfile, 'r') as f:
         csvf = csv.reader(f, 'xyzcsv')
@@ -150,6 +203,7 @@ def calcula_xyz(csvfile):
 
 
 # mean() {{{2
+
 def mean(col, csvfile):
     '''
     calcula a média dos valores XYZ (primeira etapa)
@@ -166,12 +220,13 @@ def mean(col, csvfile):
 
 
 # media() {{{2
+
 def media(r, csvfile):
     '''
     segunda etapa para mean()
     '''
 
-    print messages.crechuck
+    print messages.strings['crechuck']
 
     vals_tot = []
     for i in range(r):
@@ -183,14 +238,16 @@ def media(r, csvfile):
     return med_tot
 
 
-# cria_chuck() {{{3
+# cria_chuck() {{{2
+
 def cria_chuck():
     '''
     cria arquivo .ck para geração de sons via ChucK
     '''
+
     mt = media(3, csvXYZ)
 
-    with open(chuckfile, 'w') as ck:
+    with open(CHUCKFILE, 'w') as ck:
         with open('./chuck_template', 'r') as cc:
             for line in cc:
                 ck.write(line)
@@ -213,12 +270,8 @@ def cria_chuck():
                 az.append(line[2])
 
         regex_nl = re.compile("\n")
-
-        with open('./occ_list.tmp', 'r') as ol:
-            durs = [regex_nl.sub('', line) + '::ms' for line in ol]
-
-        with open('./rgblist.tmp', 'r') as rl:
-            fnames = [regex_nl.sub('', line) + '.aiff' for line in rl]
+        durs = [regex_nl.sub('', line) + '::ms' for line in occ_list(DIC['ocorrencias'])]
+        fnames = [regex_nl.sub('', line) + '.aiff' for line in rgblist(DIC['rgb'])]
 
         for a, b, c, d, e, f, g, h in map(None, fx, fy, fz, ax, ay, az, durs, fnames):
             ck.write("pix.set_vars({0:5f}, {1}, {2}, {3}, {4}, {5}, {6}, {7});\n".format(mt, g, a, b, c, d, e, f))
@@ -226,41 +279,57 @@ def cria_chuck():
 
 
 # cria_aif() {{{2
+
 def cria_aif(ckfile):
     '''
-    cria arquivos .aif usando chuck
+    cria arquivos .aif usando ChucK
     '''
 
-    print messages.creaiff
+    print messages.strings['creaiff']
 
     command = shlex.split("chuck --srate44100 --silent {0}".format(ckfile))
     subprocess.call(command)
-    try: 
-        os.mkdir(destino)
-        os.mkdir(destino + "/mp3")
+
+    try:
+        os.mkdir(DESTINO)
+        os.mkdir(DESTINO + "/mp3")
     except OSError:
-        pass
+        print 'Directory {0} already exists. Remove or rename it before running this command again.'.format(DESTINO)
+        safe_cleanup()
+        sys.exit()
+    except:
+        print "unexpected error:", sys.exc_info()[0]
+        raise
+        safe_cleanup()
+        sys.exit()
 
 
 # conv_mp3() {{{2
+
 def conv_mp3():
     '''
     * cria arquivos .mp3 comprimidos para a página html de referência;
-    * move os arquivos .aif e .wav para a pasta de destino
+    * move os arquivos .aif e .wav para a pasta de DESTINO
     '''
 
-    print messages.crehtml
+    print messages.strings['crehtml']
 
     wf = glob.glob('./*.aiff')
     regex_wav = re.compile('aiff')
     for i in wf:
         audiotools.MP3Audio.from_pcm(regex_wav.sub('mp3', i), audiotools.open(i).to_pcm())
-        shutil.move(i, destino)
-        shutil.move(regex_wav.sub('mp3', i), destino + '/mp3/')
+        shutil.move(i, DESTINO)
+        shutil.move(regex_wav.sub('mp3', i), DESTINO + '/mp3/')
 
 
 # cria_ref_html() {{{2
+
 def cria_ref_html():
+    '''
+    Cria página html com referência para cada arquivo de som
+    com sua respectiva cor e número de ocorrências
+    '''
+
     with open('color_ref.html', 'w') as html:
         html.write('''
         <html>
@@ -273,16 +342,15 @@ def cria_ref_html():
         <h1>RGB color reference for project <i>{1}</i></h1>\n\
 
         <table>
-        '''.format(base, base))
-        aiffs = glob.glob(destino + '/*.aiff')
+        '''.format(BASE, BASE))
+
+        aiffs = glob.glob(DESTINO + '/*.aiff')
         regex_dash = re.compile('.*\/')
         regex_wav = re.compile('.aiff')
         regex_nl = re.compile('\n')
 
-        with open('./occ_list.tmp', 'r') as ol:
-            occs = [regex_nl.sub('', line) for line in ol]
-        with open('./rgblist.tmp', 'r') as rl:
-            rgbs = [regex_nl.sub('', line) for line in rl]
+        occs = [regex_nl.sub('', line) for line in occ_list(DIC['ocorrencias'])]
+        rgbs = [regex_nl.sub('', line) for line in rgblist(DIC['rgb'])]
 
         for i in aiffs:
             rgb = regex_dash.sub('#', regex_wav.sub('', i))
@@ -302,33 +370,33 @@ def cria_ref_html():
         </html>
         ''')
 
-    shutil.move('./color_ref.html', destino)
+    shutil.move('./color_ref.html', DESTINO)
 
 
 # cleanup() {{{2
+
 def cleanup():
     '''
     limpa arquivos temporários
     '''
 
-    print messages.cleanup
+    print messages.strings['cleanup']
 
-    os.remove(base + ".small.gif")
-    os.remove('./rgblist.tmp')
-    os.remove('./occ_list.tmp')
-    shutil.move(chuckfile, destino)
-    shutil.move(csvXYZ, destino)
-    shutil.move(csvxyz, destino)
+    os.remove(BASE + ".small.gif")
+    os.remove('./tmp.txt')
+    shutil.move(CHUCKFILE, DESTINO)
+    shutil.move(csvXYZ, DESTINO)
+    shutil.move(csvxyz, DESTINO)
 
 
 # chamando as funções para execução do programa {{{1
 
-gera_xyz(pic)
+gera_csv()
 calcula_xyz(csvXYZ)
 cria_chuck()
-cria_aif(chuckfile)
+cria_aif(CHUCKFILE)
 conv_mp3()
 cria_ref_html()
 cleanup()
 
-print '\nOkay! You can find your .aiff and various reference files at {0}.\n'.format(destino)
+print '\nOkay! You can find your .aiff and various reference files at {0}.\n'.format(DESTINO)
