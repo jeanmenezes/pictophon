@@ -6,7 +6,7 @@
 import sys
 import subprocess
 import shlex
-from PIL import Image
+from pgmagick import Image, Blob
 import re
 import os
 import shutil
@@ -53,8 +53,9 @@ def check_img():
     '''
 
     try:
-        Image.open(sys.argv[1])
-    except IOError:
+        check = Image()
+        check.ping(sys.argv[1])
+    except RuntimeError:
         print sys.argv[1], "is not a valid image file!"
         sys.exit()
     except:
@@ -75,7 +76,7 @@ DESTINO = './' + BASE + '_pictophon'
 CHUCKFILE = './' + BASE + '.ck'
 csvXYZ = './' + BASE + '.XYZ.csv'
 csvxyz = './' + BASE + '.xyz.csv'
-REGEX_XYZ = re.compile('[xyz\(\)]')
+REGEX_XYZ = re.compile('[\(\)]')
 REGEX_HASH = re.compile('\#')
 
 
@@ -88,7 +89,6 @@ def safe_cleanup():
     Limpa arquivos temporários em caso de erro
     '''
 
-    os.remove(BASE + ".small.gif")
     os.remove('./tmp.txt')
     os.remove(CHUCKFILE)
     os.remove(csvXYZ)
@@ -109,20 +109,31 @@ def gera_xyz(imagem):
     print messages.strings['welcome']
     print messages.strings['crexyz']
 
-    comando = [
-        'convert \'{0}\' -resize 25% \'./tmp.{1}\''.format(imagem, EXTENSAO),
-        'convert \'./tmp.{0}\' -dither FloydSteinberg -colors 64 \'./{1}.small.gif\''.format(EXTENSAO, BASE),
-        'rm \'./tmp.{0}\''.format(EXTENSAO),
-        'convert \'./{0}.small.gif\' -colorspace XYZ \'./tmp.txt\''.format(BASE)
-    ]
-
-    comandos = [shlex.split(x) for x in comando]
-
-    for i in comandos:
-        subprocess.call(i)
+    img_base = Blob(open(imagem).read())
+    img_alvo = Image(img_base)
+    img_alvo.magick('GIF')
+    img_alvo.colorSpace = 'XYZ'
+    img_alvo.scale('25%')
+    img_alvo.quantizeColors(64)
+    img_alvo.quantizeDither(img_alvo.quantize(64))
+    img_alvo.write('./tmp.txt')
 
     with open('./tmp.txt', 'r') as tt:
         return tt.readlines()
+
+
+# limpeza_inicial {{{2
+
+def limpeza_inicial(entrada):
+    '''
+    Limpa caracteres desnecessários para facilitar o trabalho de parse_csv()
+    '''
+
+    strips = re.compile('.*: ')
+    pars = re.compile('[\(][ ]*')
+    rexps = re.compile('[\,][ ]*')
+
+    return [strips.sub('', pars.sub('(', rexps.sub(',', line))) for line in entrada]
 
 
 # parse_csv {{{2
@@ -132,13 +143,14 @@ def parse_csv(txtfile):
     Gera listas brutas de RGB, XYZ e número de ocorrência de cada cor.
     '''
 
-    l = [line.split() for line in txtfile]
-    pen_col = [x[-2] for x in l[1:]]
-    ult_col = [x[-1] for x in l[1:]]
-    rgb = list(set(ult_col))
-    return {'XYZ': rgb,
-            'rgb': list(set(pen_col)),
-            'ocorrencias': [pen_col.count(j) for j in list(set(pen_col))]}
+    limpo = limpeza_inicial(txtfile)
+
+    l = [line.split() for line in limpo]
+    pen_col = [x[-2] for x in l]
+    ult_col = [x[-1] for x in l]
+    return {'rgb': list(set(ult_col)),
+            'XYZ': list(set(pen_col)),
+            'ocorrencias': [ult_col.count(j) for j in list(set(ult_col))]}
 
 
 # cria dicionário para uso persistente {{{2
@@ -382,7 +394,6 @@ def cleanup():
 
     print messages.strings['cleanup']
 
-    os.remove(BASE + ".small.gif")
     os.remove('./tmp.txt')
     shutil.move(CHUCKFILE, DESTINO)
     shutil.move(csvXYZ, DESTINO)
