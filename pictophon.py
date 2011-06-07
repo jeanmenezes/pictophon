@@ -71,7 +71,6 @@ def check_img():
 PIC = check_img()
 PARTES = PIC.rsplit('.', 1)
 BASE = PARTES[0]
-EXTENSAO = PARTES[1]
 DESTINO = './' + BASE + '_pictophon'
 CHUCKFILE = './' + BASE + '.ck'
 csvXYZ = './' + BASE + '.XYZ.csv'
@@ -197,12 +196,9 @@ def calcula_xyz(csvfile):
     csv.register_dialect('xyzcsv', delimiter=',', quoting=csv.QUOTE_NONE)
     with open(csvfile, 'r') as f:
         csvf = csv.reader(f, 'xyzcsv')
-        vals = []
         vals_xyz = []
 
-        for line in csvf:
-            v = [float(x) for x in line]
-            vals.append(v)
+        vals = [[float(x) for x in line] for line in csvf]
 
         for i in vals:
             vl = ['{0:5f}'.format(x / sum(i)) for x in i]
@@ -336,7 +332,7 @@ def conv_mp3():
 
 # cria_ref_html() {{{2
 
-def cria_ref_html():
+def cria_ref_html(basename, dir_destino):
     '''
     Cria página html com referência para cada arquivo de som
     com sua respectiva cor e número de ocorrências
@@ -354,9 +350,9 @@ def cria_ref_html():
         <h1>RGB color reference for project <i>{1}</i></h1>\n\
 
         <table>
-        '''.format(BASE, BASE))
+        '''.format(basename, basename))
 
-        aiffs = glob.glob(DESTINO + '/*.aiff')
+        aiffs = glob.glob(dir_destino + '/*.aiff')
         regex_dash = re.compile('.*\/')
         regex_wav = re.compile('.aiff')
         regex_nl = re.compile('\n')
@@ -402,12 +398,15 @@ def cleanup():
 
 # chamando as funções para execução do programa {{{1
 
-gera_csv()
-calcula_xyz(csvXYZ)
-cria_chuck()
-cria_aif(CHUCKFILE)
-conv_mp3()
-cria_ref_html()
-cleanup()
+def main():
+    gera_csv()
+    calcula_xyz(csvXYZ)
+    cria_chuck()
+    cria_aif(CHUCKFILE)
+    conv_mp3()
+    cria_ref_html(BASE, DESTINO)
+    cleanup()
+    print '\nOkay! You can find your .aiff and various reference files at {0}.\n'.format(DESTINO)
 
-print '\nOkay! You can find your .aiff and various reference files at {0}.\n'.format(DESTINO)
+
+main()
